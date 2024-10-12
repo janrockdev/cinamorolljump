@@ -7,7 +7,7 @@ function getRandomInt(min, max) {
   
   const character = {
     x: 50,
-    y: canvas.height - 100,
+    y: 0, // Will be set in resizeCanvas()
     width: 150,
     height: 150,
     velocityY: 0,
@@ -22,8 +22,8 @@ function getRandomInt(min, max) {
     image: new Image(),
     x: 0,
     y: 0,
-    width: canvas.width,
-    height: canvas.height,
+    width: 0, // Will be set in resizeCanvas()
+    height: 0,
   };
   
   background.image.src = 'images/background.jpg';
@@ -32,7 +32,7 @@ function getRandomInt(min, max) {
   const collisionSound = new Audio('sounds/crash.wav');
   const backgroundMusic = new Audio('sounds/music.wav');
   backgroundMusic.loop = true; // Loop the background music
-
+  
   const obstacleImageSources = [
     'images/obstacle1.png',
     'images/obstacle2.png',
@@ -46,6 +46,45 @@ function getRandomInt(min, max) {
   let obstaclesPassed = 0; // Counter for obstacles passed
   let obstacleBaseSpeed = 5; // Initial obstacle speed
   
+  // Responsive canvas and element sizes
+  function resizeCanvas() {
+    canvas.width = window.innerWidth - 50;
+    canvas.height = window.innerHeight - 50;
+  
+    // Update background dimensions
+    background.width = canvas.width;
+    background.height = canvas.height;
+  
+    // Update character position
+    character.y = canvas.height - character.height;
+  
+    // Adjust character size based on canvas height
+    character.height = canvas.height * 0.2; // 20% of canvas height
+    character.width = character.height; // Keep aspect ratio
+  
+    // Adjust obstacle sizes based on canvas height
+    for (let obstacle of obstacles) {
+      obstacle.height = canvas.height * 0.1; // 10% of canvas height
+      obstacle.width = obstacle.height; // Keep aspect ratio
+    }
+  }
+  
+  window.addEventListener('resize', resizeCanvas);
+  window.addEventListener('load', resizeCanvas);
+  resizeCanvas(); // Initial call
+  
+  // Touch controls for mobile devices
+  canvas.addEventListener('touchstart', function (event) {
+    event.preventDefault();
+  
+    if (!character.isJumping) {
+      character.isJumping = true;
+      character.velocityY = -20;
+      jumpSound.play();
+    }
+  });
+  
+  // Keyboard controls (optional, for desktop)
   document.addEventListener('keydown', function (event) {
     if ((event.code === 'Space' || event.key === ' ') && !character.isJumping) {
       character.isJumping = true;
@@ -113,6 +152,12 @@ function getRandomInt(min, max) {
       character.isJumping = false;
     }
   
+    // Prevent character from going above the canvas
+    if (character.y < 0) {
+      character.y = 0;
+      character.velocityY = 0;
+    }
+  
     // Move the background for scrolling effect
     background.x -= 1; // Adjust speed as needed
   
@@ -133,9 +178,7 @@ function getRandomInt(min, max) {
   
     // Generate obstacles at variable intervals
     if (frameCount >= nextObstacleFrame) {
-      const obstacleRandon = getRandomInt(40, 80);
-      const obstacleHeight = obstacleRandon;
-      const obstacleWidth = obstacleRandon - 10;
+      const obstacleSize = canvas.height * 0.1; // Obstacle size based on canvas height
   
       // Select a random obstacle image
       const randomImageIndex = getRandomInt(0, obstacleImages.length - 1);
@@ -143,11 +186,11 @@ function getRandomInt(min, max) {
   
       const obstacle = {
         x: canvas.width,
-        y: canvas.height - obstacleHeight,
-        width: obstacleWidth,
-        height: obstacleHeight,
+        y: canvas.height - obstacleSize,
+        width: obstacleSize,
+        height: obstacleSize,
         image: obstacleImage,
-        speed: obstacleBaseSpeed,
+        speed: obstacleBaseSpeed * (canvas.width / 800), // Adjust speed based on canvas width
       };
       obstacles.push(obstacle);
   
@@ -183,8 +226,8 @@ function getRandomInt(min, max) {
   
       // Collision detection
       if (
-        character.x < (obstacle.x + obstacle.width) - 40 &&
-        (character.x + character.width) - 40 > obstacle.x &&
+        character.x < obstacle.x + obstacle.width - 20 &&
+        character.x + character.width - 20 > obstacle.x &&
         character.y < obstacle.y + obstacle.height &&
         character.y + character.height > obstacle.y
       ) {
@@ -202,9 +245,9 @@ function getRandomInt(min, max) {
     ctx.drawImage(character.image, character.x, character.y, character.width, character.height);
   
     // Display obstacles passed counter
-    ctx.font = '40px Arial';
+    ctx.font = '30px Arial';
     ctx.fillStyle = 'white';
-    ctx.fillText('Obstacles Passed: ' + obstaclesPassed, 200, 60);
+    ctx.fillText('Obstacles Passed: ' + obstaclesPassed, 20, 40);
   
     // Request next frame
     requestAnimationFrame(update);
